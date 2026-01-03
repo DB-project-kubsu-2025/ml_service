@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8071
+    volumes:
+      - ./:/home/django/ml_service
+    ports:
+      - "8071:8071"
+    networks:
+      - db_project_network
+
+networks:
+  db_project_network:
+    external: true
