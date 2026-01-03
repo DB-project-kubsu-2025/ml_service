@@ -1,0 +1,33 @@
+[project]
+name = "ml-service"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "alex_barmen",email = "www.lad282@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "scikit-learn (==1.6.1)",
+    "lightgbm (==4.6.0)",
+    "xgboost (==3.0.4)",
+    "torch (==2.7.1)",
+    "tqdm (==4.67.1)",
+    "matplotlib (==3.10.0)",
+    "seaborn (==0.13.2)",
+    "plotly (==6.3.0)",
+    "pandas (==2.2.3)",
+    "numpy (==2.0.2)",
+    "prophet (==1.1.7)",
+    "statsmodels (==0.14.5)",
+    "imbalanced-learn (==0.13.0)",
+    "joblib (==1.5.3)",
+    "uvicorn (==0.29.0)",
+    "fastapi (==0.110.0)",
+    "unicorn (>=2.1.4,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
