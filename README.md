@@ -280,3 +280,5 @@ docker compose up
   }
 }
 ```
+
+# Напоманиние: metadata.pkl.gz разархивировать 
