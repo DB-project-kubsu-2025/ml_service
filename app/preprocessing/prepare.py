@@ -1,21 +1,91 @@
 import pandas as pd
 from datetime import timedelta
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, Callable
 import logging
+
+from app.types import HistoricalDataPoint
 
 logger = logging.getLogger(__name__)
 
 
 class DataPreprocessor:
     """Класс для предобработки временных рядов"""
+    LAG_LIST = [1, 2, 3, 7, 14, 28]
+    WINDOW_LIST = [7, 14, 28]
 
     def __init__(self, feature_columns: Optional[List[str]] = None):
         self.feature_columns = feature_columns or []
-        self.feature_order = feature_columns  # Сохраняем порядок признаков
+        self.feature_order = feature_columns
         logger.info(f"Инициализирован препроцессор с {len(self.feature_columns)} признаками")
 
+        self._feature_configs = self._get_feature_configs()
 
-    def set_features_from_model(self, model) -> None:
+    def _get_feature_configs(self) -> Dict[str, Dict[str, Any]]:
+        """Возвращает конфигурацию функций для создания признаков"""
+        return {
+            'lag': {
+                'prefix': 'sales_lag_',
+                'func': self._create_lag_feature,
+                'requires_date': False
+            },
+            'rolling_mean': {
+                'prefix': 'rolling_mean_',
+                'func': self._create_rolling_mean_feature,
+                'requires_date': False
+            },
+            'rolling_std': {
+                'prefix': 'rolling_std_',
+                'func': self._create_rolling_std_feature,
+                'requires_date': False
+            }
+        }
+
+    def _create_lag_feature(self, data: pd.DataFrame, feature_name: str,
+                            target_col: str) -> pd.Series:
+        """Создает лаговый признак"""
+        try:
+            lag = int(feature_name.split('_')[-1])
+            return data[target_col].shift(lag)
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Не удалось создать лаговый признак {feature_name}: {e}")
+            return pd.Series(0.0, index=data.index)
+
+    def _create_rolling_mean_feature(self, data: pd.DataFrame, feature_name: str,
+                                     target_col: str) -> pd.Series:
+        """Создает признак скользящего среднего"""
+        try:
+            window = int(feature_name.split('_')[-1])
+            return data[target_col].rolling(window=window, min_periods=1).mean()
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Не удалось создать rolling mean {feature_name}: {e}")
+            return pd.Series(0.0, index=data.index)
+
+    def _create_rolling_std_feature(self, data: pd.DataFrame, feature_name: str,
+                                    target_col: str) -> pd.Series:
+        """Создает признак скользящего стандартного отклонения"""
+        try:
+            window = int(feature_name.split('_')[-1])
+            return data[target_col].rolling(window=window, min_periods=1).std()
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Не удалось создать rolling std {feature_name}: {e}")
+            return pd.Series(0.0, index=data.index)
+
+    def _get_date_feature_func(self, feature_name: str) -> Optional[Callable]:
+        """Возвращает функцию для создания признака на основе даты"""
+        date_features = {
+            'day_of_week': lambda dt: dt.dayofweek,
+            'wday': lambda dt: dt.dayofweek,
+            'day_of_month': lambda dt: dt.day,
+            'month': lambda dt: dt.month,
+            'year': lambda dt: dt.year,
+            'is_weekend': lambda dt: dt.dayofweek >= 5,
+            'is_month_start': lambda dt: dt.day == 1,
+            'day_of_year': lambda dt: dt.dayofyear,
+            'week_of_month': lambda dt: dt.day // 7
+        }
+        return date_features.get(feature_name)
+
+    def set_features_from_model(self, model) -> List[str]:
         """Устанавливает признаки и их порядок из обученной модели"""
         features = []
 
@@ -43,86 +113,37 @@ class DataPreprocessor:
 
         return features
 
-
     def _create_single_feature(self, data: pd.DataFrame, feature_name: str,
                                target_col: str = 'sales', date_col: str = 'date') -> pd.DataFrame:
         """Создает один признак по его имени"""
 
+        # Проверка, является ли признак лаговым
         if feature_name.startswith('sales_lag_'):
-            try:
-                lag = int(feature_name.split('_')[-1])
-                data[feature_name] = data[target_col].shift(lag)
-            except:
-                data[feature_name] = 0.0
+            data[feature_name] = self._create_lag_feature(data, feature_name, target_col)
 
+        # Проверка, является ли признак скользящим средним
         elif feature_name.startswith('rolling_mean_'):
-            try:
-                window = int(feature_name.split('_')[-1])
-                data[feature_name] = data[target_col].rolling(window=window, min_periods=1).mean()
-            except:
-                data[feature_name] = 0.0
+            data[feature_name] = self._create_rolling_mean_feature(data, feature_name, target_col)
 
+        # Проверка, является ли признак скользящим отклонением
         elif feature_name.startswith('rolling_std_'):
-            try:
-                window = int(feature_name.split('_')[-1])
-                data[feature_name] = data[target_col].rolling(window=window, min_periods=1).std()
-            except:
-                data[feature_name] = 0.0
+            data[feature_name] = self._create_rolling_std_feature(data, feature_name, target_col)
 
-        elif feature_name in ['day_of_week', 'wday']:
-            if date_col in data.columns:
-                data[feature_name] = pd.to_datetime(data[date_col]).dt.dayofweek.astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'day_of_month':
-            if date_col in data.columns:
-                data[feature_name] = pd.to_datetime(data[date_col]).dt.day.astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'month':
-            if date_col in data.columns:
-                data[feature_name] = pd.to_datetime(data[date_col]).dt.month.astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'year':
-            if date_col in data.columns:
-                data[feature_name] = pd.to_datetime(data[date_col]).dt.year.astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'is_weekend':
-            if date_col in data.columns:
-                data[feature_name] = (pd.to_datetime(data[date_col]).dt.dayofweek >= 5).astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'is_month_start':
-            if date_col in data.columns:
-                data[feature_name] = (pd.to_datetime(data[date_col]).dt.day == 1).astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'day_of_year':
-            if date_col in data.columns:
-                data[feature_name] = pd.to_datetime(data[date_col]).dt.dayofyear.astype(int)
-            else:
-                data[feature_name] = 0
-
-        elif feature_name == 'week_of_month':
-            if date_col in data.columns:
-                data[feature_name] = (pd.to_datetime(data[date_col]).dt.day // 7).astype(int)
-            else:
-                data[feature_name] = 0
-
+        # Проверка, является ли признак основанным на дате
         else:
-            data[feature_name] = 0.0
-            logger.warning(f"Неизвестный тип признака: {feature_name}")
+            date_func = self._get_date_feature_func(feature_name)
+            if date_func is not None and date_col in data.columns:
+                try:
+                    data[feature_name] = pd.to_datetime(data[date_col]).apply(date_func).astype(float)
+                except Exception as e:
+                    logger.warning(f"Не удалось создать признак даты {feature_name}: {e}")
+                    data[feature_name] = 0.0
+            else:
+                data[feature_name] = 0.0
+                if feature_name not in ['date', 'sales']:
+                    logger.warning(f"Неизвестный тип признака: {feature_name}")
 
         return data
-
 
     def create_features(self, df: pd.DataFrame, target_col: str = 'sales') -> pd.DataFrame:
         """Создание признаков для временного ряда в порядке, указанном в feature_columns"""
@@ -153,15 +174,14 @@ class DataPreprocessor:
         logger.info(f"Создано {len(self.feature_columns)} признаков в заданном порядке")
         return data
 
-
     def _get_default_features(self) -> List[str]:
         """Стандартный набор признаков (используется если не задан явно)"""
         features = []
 
-        for lag in [1, 2, 3, 7, 14, 28]:
+        for lag in self.LAG_LIST:
             features.append(f'sales_lag_{lag}')
 
-        for window in [7, 14, 28]:
+        for window in self.WINDOW_LIST:
             features.append(f'rolling_mean_{window}')
             features.append(f'rolling_std_{window}')
 
@@ -173,8 +193,7 @@ class DataPreprocessor:
 
         return features
 
-
-    def prepare_for_prediction(self, historical_data: List[Dict[str, Any]],
+    def prepare_for_prediction(self, historical_data: List[HistoricalDataPoint],
                                forecast_days: int = 14) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Подготовка исторических данных для прогнозирования"""
         df = pd.DataFrame(historical_data)
@@ -197,22 +216,15 @@ class DataPreprocessor:
             row = {'date': future_date, 'sales': 0.0}
 
             for feature_name in self.feature_columns:
-                if feature_name in ['day_of_week', 'wday']:
-                    row[feature_name] = float(future_date.dayofweek)
-                elif feature_name == 'day_of_month':
-                    row[feature_name] = float(future_date.day)
-                elif feature_name == 'month':
-                    row[feature_name] = float(future_date.month)
-                elif feature_name == 'year':
-                    row[feature_name] = float(future_date.year)
-                elif feature_name == 'is_weekend':
-                    row[feature_name] = float(future_date.dayofweek >= 5)
-                elif feature_name == 'is_month_start':
-                    row[feature_name] = float(future_date.day == 1)
-                elif feature_name == 'day_of_year':
-                    row[feature_name] = float(future_date.dayofyear)
-                elif feature_name == 'week_of_month':
-                    row[feature_name] = float(future_date.day // 7)
+                # Получаем функцию для признака даты
+                date_func = self._get_date_feature_func(feature_name)
+                if date_func is not None:
+                    try:
+                        row[feature_name] = float(date_func(future_date))
+                    except Exception:
+                        row[feature_name] = 0.0
+
+                # Обрабатка лаговых признаков
                 elif feature_name.startswith('sales_lag_'):
                     try:
                         lag = int(feature_name.split('_')[-1])
@@ -220,18 +232,20 @@ class DataPreprocessor:
                             row[feature_name] = float(hist_sales[-(i + lag)])
                         else:
                             row[feature_name] = 0.0
-                    except:
+                    except (ValueError, IndexError) as e:
+                        logger.warning(f"Ошибка при создании лагового признака {feature_name}: {e}")
                         row[feature_name] = 0.0
+
+                # Обработка скользящих статистик
                 elif feature_name.startswith('rolling_'):
                     row[feature_name] = 0.0
+
                 else:
                     row[feature_name] = 0.0
 
             future_rows.append(row)
 
-        future_df = pd.DataFrame(future_rows)
-
-        future_df = future_df.fillna(0.0)
+        future_df = pd.DataFrame(future_rows).fillna(0.0)
 
         for col in future_df.columns:
             if col != 'date' and pd.api.types.is_numeric_dtype(future_df[col]):
@@ -246,42 +260,16 @@ class DataPreprocessor:
     def get_features_for_prediction(self, historical_df: pd.DataFrame,
                                     future_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Получает только признаки (без date и sales) в правильном порядке"""
-        feature_cols = [col for col in historical_df.columns
-                        if col not in ['date', 'sales']]
+        feature_cols = [
+            col for col in historical_df.columns if col not in ['date', 'sales']
+        ]
 
         if self.feature_order:
-            ordered_features = [f for f in self.feature_order if f in feature_cols]
-            other_features = [f for f in feature_cols if f not in ordered_features]
+            ordered_features = [feature for feature in self.feature_order if feature in feature_cols]
+            other_features = [feature for feature in feature_cols if feature not in ordered_features]
             feature_cols = ordered_features + other_features
 
         X_historical = historical_df[feature_cols]
         X_future = future_df[feature_cols]
 
         return X_historical, X_future
-
-    def split_data(self, data: pd.DataFrame, target_col: str = 'sales',
-                   test_size: int = 28) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-        """Разделение данных на обучающую и тестовую выборки"""
-        if len(data) < test_size + 14:
-            raise ValueError(f"Недостаточно данных. Всего: {len(data)}, нужно минимум: {test_size + 14}")
-
-        split_idx = len(data) - test_size
-
-        feature_cols = [col for col in data.columns if col not in ['date', target_col]]
-
-        if self.feature_order:
-            ordered_features = [f for f in self.feature_order if f in feature_cols]
-            other_features = [f for f in feature_cols if f not in ordered_features]
-            feature_cols = ordered_features + other_features
-
-        X = data[feature_cols]
-        y = data[target_col]
-
-        X_train = X.iloc[:split_idx]
-        X_test = X.iloc[split_idx:]
-        y_train = y.iloc[:split_idx]
-        y_test = y.iloc[split_idx:]
-
-        logger.info(f"Данные разделены: train={len(X_train)}, test={len(X_test)}")
-
-        return X_train, X_test, y_train, y_test

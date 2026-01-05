@@ -3,50 +3,63 @@ import numpy as np
 from typing import Dict, List, Any
 import logging
 
+from app.types import (
+    BatchPredictionResponse, ModelMetadata, BatchPredictionSummary,
+    BatchPredictionResultItem
+)
+
 logger = logging.getLogger(__name__)
 
 
 class ResultFormatter:
     """Форматирование результатов"""
 
+    STATUS_OF_SUCCESS = 'success'
+
     def __init__(self):
         pass
 
 
-    def format_batch_results(self, results: Dict[str, Dict]) -> Dict[str, Any]:
+    def format_batch_results(self, results: Dict[str, Dict]) -> BatchPredictionResponse:
         """Форматирование пакетных результатов"""
-        successful = []
-        failed = []
+        successful: List[BatchPredictionResultItem] = []
+        failed: List[BatchPredictionResultItem] = []
 
         for cat_id, result in results.items():
-            if result.get('status') == 'success':
-                successful.append({
+            if result.get('status') == self.STATUS_OF_SUCCESS:
+                # Создание успешного результата с нужными полями
+                successful_item: BatchPredictionResultItem = {
                     'category_store_id': cat_id,
-                    'forecast_days': result['forecast_days'],
-                    'total_predicted': sum(p['predicted_sales'] for p in result['predictions'])
-                })
+                    'forecast_days': result.get('forecast_days', 0),
+                    'total_predicted': sum(p['predicted_sales'] for p in result.get('predictions', []))
+                }
+                successful.append(successful_item)
             else:
-                failed.append({
+                # Создание результата с ошибкой
+                failed_item: BatchPredictionResultItem = {
                     'category_store_id': cat_id,
                     'error': result.get('error', 'Unknown error')
-                })
+                }
+                failed.append(failed_item)
 
-        summary = {
+        summary: BatchPredictionSummary = {
             'total': len(results),
             'successful': len(successful),
             'failed': len(failed),
             'success_rate': len(successful) / len(results) * 100 if results else 0
         }
 
-        return {
+        response: BatchPredictionResponse = {
             'summary': summary,
             'successful_predictions': successful,
             'failed_predictions': failed
         }
 
+        return response
+
 
     def create_report(self, predictions: List[Dict],
-                      model_info: Dict) -> Dict[str, Any]:
+                      model_info: ModelMetadata) -> Dict[str, Any]:
         """Создание отчета по прогнозу"""
         if not predictions:
             return {}

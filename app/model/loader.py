@@ -4,6 +4,7 @@ from typing import Optional, Tuple, Dict, Any
 import logging
 from datetime import datetime
 from app.config import MODEL_ARTIFACTS_DIR
+from app.types import ModelMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -17,24 +18,25 @@ class ModelLoader:
 
 
     def save_model(self, model: Any, category_store_id: str,
-                   metadata: Optional[Dict] = None) -> bool:
+                   metadata: Optional[ModelMetadata] = None) -> bool:
         """Сохранение модели и метаданных"""
+
+        safe_name = self._get_safe_filename(category_store_id)
+        model_path = self.model_dir / f"{safe_name}_model.pkl"
+        meta_path = self.model_dir / f"{safe_name}_metadata.json"
+
+        joblib.dump(model, model_path)
+
+        if metadata is None:
+            metadata = {}
+
+        metadata.update({
+            'category_store_id': category_store_id,
+            'saved_at': datetime.now().isoformat(),
+            'model_type': type(model).__name__
+        })
+
         try:
-            safe_name = self._get_safe_filename(category_store_id)
-            model_path = self.model_dir / f"{safe_name}_model.pkl"
-            meta_path = self.model_dir / f"{safe_name}_metadata.json"
-
-            joblib.dump(model, model_path)
-
-            if metadata is None:
-                metadata = {}
-
-            metadata.update({
-                'category_store_id': category_store_id,
-                'saved_at': datetime.now().isoformat(),
-                'model_type': type(model).__name__
-            })
-
             with open(meta_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
 
@@ -46,7 +48,7 @@ class ModelLoader:
             return False
 
 
-    def load_model(self, category_store_id: str) -> Tuple[Optional[Any], Dict]:
+    def load_model(self, category_store_id: str) -> Tuple[Optional[Any], ModelMetadata]:
         """Загрузка модели и метаданных"""
         if category_store_id in self.models_cache:
             return self.models_cache[category_store_id]
