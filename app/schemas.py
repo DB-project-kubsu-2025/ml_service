@@ -41,13 +41,13 @@ class PredictionRequest(BaseModel):
 
 
 class PredictionPoint(BaseModel):
-    date: str
-    value: float
+    date: Optional[str] = None
+    value: Optional[float] = None
 
 
 class PredictionStatistics(BaseModel):
-    mae: float
-    rmse: float
+    mae: Optional[float] = None
+    rmse: Optional[float] = None
 
 
 class DataForPredictionItem(BaseModel):

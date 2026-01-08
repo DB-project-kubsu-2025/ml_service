@@ -39,7 +39,7 @@ async def prediction_by_one_category(request: PredictionRequest) -> SuccessPredi
     "/prediction/package/",
     summary="Прогноз продаж по всем категориям",
     tags=["Prediction"],
-    response_model=SuccessPredictionResponse,
+    response_model=BatchPredictionAPIResponse,
 )
 async def package_prediction(data_for_prediction: DataForPrediction) -> BatchPredictionAPIResponse:
     """Пакетное прогнозирование"""
