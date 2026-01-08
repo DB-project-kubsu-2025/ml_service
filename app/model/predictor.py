@@ -29,7 +29,6 @@ class SalesPredictor:
         self.preprocessor = DataPreprocessor()
         self.loader = ModelLoader()
 
-
     def predict(self, category_store_id: str,
                 historical_data: List[HistoricalDataPoint],
                 forecast_days: int = 14) -> PredictionResponse:
@@ -136,7 +135,6 @@ class SalesPredictor:
             }
             return error_response
 
-
     def evaluate_model(self, category_store_id: str,
                        test_data: pd.DataFrame) -> Dict[str, float]:
         """Оценка модели на тестовых данных"""
@@ -223,7 +221,6 @@ class SalesPredictor:
         }
 
         return result
-
 
 class PredictionAPI:
     """API сервис для прогнозирования"""
