@@ -5,6 +5,7 @@
 - Docker
 
 ## Настройка тестового окружения для разработки
+- Разархивировать metadata.pkl.gz в папку `app/model/artifacts` (перед этим ее надо создать)
 - Создать виртуальное окружение python
 ```bash
 python -m venv venv
@@ -280,5 +281,3 @@ docker compose up
   }
 }
 ```
-
-# Напоманиние: metadata.pkl.gz разархивировать 
