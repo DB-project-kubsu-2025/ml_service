@@ -4,11 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-class HistoricalDataPoint(TypedDict):
-    """Тип для точки исторических данных"""
-    date: str
-    sales: float
-
 
 class PredictionPoint(TypedDict):
     """Тип для точки прогноза"""

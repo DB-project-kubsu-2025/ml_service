@@ -13,10 +13,10 @@ from sklearn.linear_model import Ridge, Lasso
 from app.preprocessing.prepare import DataPreprocessor
 from app.model.loader import ModelLoader
 from app.postprocessing.format import ResultFormatter
+from app.schemas import HistoricalDataPoint
 from app.types import (
     PredictionResponse, ErrorResponse, HealthCheckResponse,
-    ModelInfoResponse, BatchPredictionAPIResponse,
-    HistoricalDataPoint, SuccessPredictionResponse, PredictionPoint
+    ModelInfoResponse, BatchPredictionAPIResponse, SuccessPredictionResponse, PredictionPoint
 )
 
 logger = logging.getLogger(__name__)
@@ -225,15 +225,13 @@ class SalesPredictor:
         return result
 
 
-
-
 class PredictionAPI:
     """API сервис для прогнозирования"""
 
     NUMBER_OF_HISTORICAL_DATA = 28
     STATUS_OF_SUCCESS = 'success'
 
-    def __init__(self):
+    def     __init__(self):
         self.predictor = SalesPredictor()
         self.loader = ModelLoader()
         self.formatter = ResultFormatter()
@@ -313,7 +311,6 @@ class PredictionAPI:
         }
 
         return response
-
 
     def get_model_info(self, category_store_id: str) -> ModelInfoResponse:
         """Получение информации о модели"""
