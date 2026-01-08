@@ -209,3 +209,4 @@ __marimo__/
 .idea
 *.pkl
 app/model/artifacts/
+/app/model/artifacts/
