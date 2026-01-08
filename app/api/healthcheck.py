@@ -4,6 +4,6 @@ router = APIRouter()
 
 
 @router.get('/healthcheck')
-def healthcheck():
+async def healthcheck():
     """Проверка работоспособности сервиса"""
     return Response(status_code=status.HTTP_200_OK)

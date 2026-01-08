@@ -13,10 +13,10 @@ from sklearn.linear_model import Ridge, Lasso
 from app.preprocessing.prepare import DataPreprocessor
 from app.model.loader import ModelLoader
 from app.postprocessing.format import ResultFormatter
+from app.schemas import HistoricalDataPoint, DataForPredictionItem
 from app.types import (
     PredictionResponse, ErrorResponse, HealthCheckResponse,
-    ModelInfoResponse, BatchPredictionAPIResponse,
-    HistoricalDataPoint, SuccessPredictionResponse, PredictionPoint
+    ModelInfoResponse, BatchPredictionAPIResponse, SuccessPredictionResponse, PredictionPoint,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,6 @@ class SalesPredictor:
     def __init__(self):
         self.preprocessor = DataPreprocessor()
         self.loader = ModelLoader()
-
 
     def predict(self, category_store_id: str,
                 historical_data: List[HistoricalDataPoint],
@@ -136,7 +135,6 @@ class SalesPredictor:
             }
             return error_response
 
-
     def evaluate_model(self, category_store_id: str,
                        test_data: pd.DataFrame) -> Dict[str, float]:
         """Оценка модели на тестовых данных"""
@@ -224,16 +222,13 @@ class SalesPredictor:
 
         return result
 
-
-
-
 class PredictionAPI:
     """API сервис для прогнозирования"""
 
     NUMBER_OF_HISTORICAL_DATA = 28
     STATUS_OF_SUCCESS = 'success'
 
-    def __init__(self):
+    def     __init__(self):
         self.predictor = SalesPredictor()
         self.loader = ModelLoader()
         self.formatter = ResultFormatter()
@@ -273,7 +268,7 @@ class PredictionAPI:
 
         return result
 
-    def get_batch_predictions(self, requests: List[Dict[str, Any]]) -> BatchPredictionAPIResponse:
+    def get_batch_predictions(self, requests: list[DataForPredictionItem]) -> BatchPredictionAPIResponse:
         """Пакетное прогнозирование"""
         logger.info(f"API: Пакетное прогнозирование для {len(requests)} запросов")
 
@@ -313,7 +308,6 @@ class PredictionAPI:
         }
 
         return response
-
 
     def get_model_info(self, category_store_id: str) -> ModelInfoResponse:
         """Получение информации о модели"""

@@ -16,7 +16,6 @@ class ModelLoader:
         self.models_cache = {}
         self.model_dir = MODEL_ARTIFACTS_DIR
 
-
     def save_model(self, model: Any, category_store_id: str,
                    metadata: Optional[ModelMetadata] = None) -> bool:
         """Сохранение модели и метаданных"""
@@ -46,7 +45,6 @@ class ModelLoader:
         except Exception as e:
             logger.error(f"Ошибка сохранения модели {category_store_id}: {e}")
             return False
-
 
     def load_model(self, category_store_id: str) -> Tuple[Optional[Any], ModelMetadata]:
         """Загрузка модели и метаданных"""
@@ -110,7 +108,6 @@ class ModelLoader:
             logger.error(f"Ошибка загрузки модели {category_store_id}: {e}")
             return None, {}
 
-
     def list_models(self) -> list:
         """Список доступных моделей"""
         models = []
@@ -130,7 +127,6 @@ class ModelLoader:
                     models.append(category_id)
 
         return sorted(models)
-
 
     def _get_safe_filename(self, category_store_id: str) -> str:
         """Создание безопасного имени файла"""

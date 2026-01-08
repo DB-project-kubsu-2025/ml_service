@@ -1,5 +1,5 @@
 services:
-  app:
+  ml_service:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,8 +9,8 @@ services:
     ports:
       - "8071:8071"
     networks:
-      - db_project_network
+      - ml_service_network
 
 networks:
-  db_project_network:
+  ml_service_network:
     external: true

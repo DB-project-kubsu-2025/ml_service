@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Optional, Tuple, List, Dict, Any, Callable
 import logging
 
-from app.types import HistoricalDataPoint
+from app.schemas import HistoricalDataPoint
 
 logger = logging.getLogger(__name__)
 
