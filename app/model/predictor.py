@@ -13,10 +13,10 @@ from sklearn.linear_model import Ridge, Lasso
 from app.preprocessing.prepare import DataPreprocessor
 from app.model.loader import ModelLoader
 from app.postprocessing.format import ResultFormatter
-from app.schemas import HistoricalDataPoint
+from app.schemas import HistoricalDataPoint, DataForPredictionItem
 from app.types import (
     PredictionResponse, ErrorResponse, HealthCheckResponse,
-    ModelInfoResponse, BatchPredictionAPIResponse, SuccessPredictionResponse, PredictionPoint
+    ModelInfoResponse, BatchPredictionAPIResponse, SuccessPredictionResponse, PredictionPoint,
 )
 
 logger = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class PredictionAPI:
 
         return result
 
-    def get_batch_predictions(self, requests: List[Dict[str, Any]]) -> BatchPredictionAPIResponse:
+    def get_batch_predictions(self, requests: list[DataForPredictionItem]) -> BatchPredictionAPIResponse:
         """Пакетное прогнозирование"""
         logger.info(f"API: Пакетное прогнозирование для {len(requests)} запросов")
 

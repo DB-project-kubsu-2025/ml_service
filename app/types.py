@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-
 class PredictionPoint(TypedDict):
     """Тип для точки прогноза"""
     date: str
@@ -106,4 +105,4 @@ class BatchPredictionAPIResponse(TypedDict, total=False):
     status: str
     timestamp: str
     results: BatchPredictionResponse
-    raw_results: Dict[str, Any]
+    raw_results: Dict[str, SuccessPredictionResponse]
