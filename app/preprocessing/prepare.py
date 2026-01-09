@@ -92,11 +92,14 @@ class DataPreprocessor:
         # Для XGBoost и scikit-learn >= 1.0
         if hasattr(model, 'feature_names_in_'):
             features = list(model.feature_names_in_)
+            # КОНВЕРТИРУЕМ numpy строки в обычные Python строки
+            features = [str(feat) for feat in features]  # <-- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
             logger.info(f"Получено {len(features)} признаков из model.feature_names_in_")
+            logger.info(f"Пример признаков после конвертации: {features[:5]}")
 
         # Для LightGBM
         elif hasattr(model, 'feature_name_'):
-            features = model.feature_name_
+            features = [str(feat) for feat in model.feature_name_]  # <-- Тоже конвертируем
             logger.info(f"Получено {len(features)} признаков из model.feature_name_")
 
         # Для старых scikit-learn или если нет feature_names
@@ -117,6 +120,7 @@ class DataPreprocessor:
                                target_col: str = 'sales', date_col: str = 'date') -> pd.DataFrame:
         """Создает один признак по его имени"""
 
+        feature_name = str(feature_name)
         # Проверка, является ли признак лаговым
         if feature_name.startswith('sales_lag_'):
             data[feature_name] = self._create_lag_feature(data, feature_name, target_col)
@@ -178,25 +182,54 @@ class DataPreprocessor:
         """Стандартный набор признаков (используется если не задан явно)"""
         features = []
 
-        for lag in self.LAG_LIST:
+        # Лаги
+        for lag in [1, 2, 3, 7, 14, 28]:
             features.append(f'sales_lag_{lag}')
 
-        for window in self.WINDOW_LIST:
+        # Скользящие статистики
+        for window in [7, 14, 28]:
             features.append(f'rolling_mean_{window}')
             features.append(f'rolling_std_{window}')
 
+        # Признаки даты (точно как при обучении)
         features.extend([
-            'day_of_week', 'day_of_month', 'month', 'year',
-            'is_weekend', 'is_month_start', 'wday',
-            'day_of_year', 'week_of_month'
+            'day_of_week',
+            'day_of_month',
+            'month',
+            'is_weekend',
+            'is_month_start'
         ])
 
         return features
 
+    def _calculate_rolling_statistics(self, sales_history: List[float],
+                                      window: int, stat_type: str = 'mean') -> float:
+        """Рассчитывает rolling статистику для заданного окна"""
+        if not sales_history:
+            return 0.0
+
+        recent_sales = sales_history[-window:] if len(sales_history) >= window else sales_history
+
+        if stat_type == 'mean':
+            return sum(recent_sales) / len(recent_sales)
+        elif stat_type == 'std' and len(recent_sales) > 1:
+            import numpy as np
+            return float(np.std(recent_sales))
+
+        return 0.0
+
     def prepare_for_prediction(self, historical_data: List[HistoricalDataPoint],
                                forecast_days: int = 14) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Подготовка исторических данных для прогнозирования"""
-        df = pd.DataFrame(historical_data)
+        data_dicts = []
+        for item in historical_data:
+            if isinstance(item, dict):
+                data_dicts.append(item)
+            else:
+                # Если это Pydantic модель, конвертируем в dict
+                data_dicts.append(item.model_dump())
+
+        df = pd.DataFrame(data_dicts)
 
         if 'date' not in df.columns or 'sales' not in df.columns:
             raise ValueError("Данные должны содержать колонки 'date' и 'sales'")
@@ -207,7 +240,7 @@ class DataPreprocessor:
         historical_df = self.create_features(df, target_col='sales')
 
         last_date = historical_df['date'].max()
-        hist_sales = historical_df['sales'].astype(float).values
+        sales_history = historical_df['sales'].astype(float).tolist()
 
         future_rows = []
 
@@ -216,7 +249,7 @@ class DataPreprocessor:
             row = {'date': future_date, 'sales': 0.0}
 
             for feature_name in self.feature_columns:
-                # Получаем функцию для признака даты
+                # Признаки даты
                 date_func = self._get_date_feature_func(feature_name)
                 if date_func is not None:
                     try:
@@ -224,24 +257,52 @@ class DataPreprocessor:
                     except Exception:
                         row[feature_name] = 0.0
 
-                # Обрабатка лаговых признаков
+                # Лаговые признаки
                 elif feature_name.startswith('sales_lag_'):
                     try:
                         lag = int(feature_name.split('_')[-1])
-                        if i + lag <= len(hist_sales):
-                            row[feature_name] = float(hist_sales[-(i + lag)])
+                        if lag <= len(sales_history):
+                            row[feature_name] = float(sales_history[-lag])
                         else:
                             row[feature_name] = 0.0
                     except (ValueError, IndexError) as e:
-                        logger.warning(f"Ошибка при создании лагового признака {feature_name}: {e}")
+                        logger.warning(f"Ошибка в лаге {feature_name}: {e}")
                         row[feature_name] = 0.0
 
-                # Обработка скользящих статистик
-                elif feature_name.startswith('rolling_'):
-                    row[feature_name] = 0.0
+                # Скользящие статистики
+                elif feature_name.startswith('rolling_mean_'):
+                    try:
+                        window = int(feature_name.split('_')[-1])
+                        # Используем последние доступные исторические данные
+                        row[feature_name] = self._calculate_rolling_statistics(
+                            sales_history, window, 'mean'
+                        )
+                    except (ValueError, IndexError) as e:
+                        logger.warning(f"Ошибка в rolling_mean {feature_name}: {e}")
+                        row[feature_name] = 0.0
+
+                elif feature_name.startswith('rolling_std_'):
+                    try:
+                        window = int(feature_name.split('_')[-1])
+                        # Используем последние доступные исторические данные
+                        row[feature_name] = self._calculate_rolling_statistics(
+                            sales_history, window, 'std'
+                        )
+                    except (ValueError, IndexError) as e:
+                        logger.warning(f"Ошибка в rolling_std {feature_name}: {e}")
+                        row[feature_name] = 0.0
 
                 else:
                     row[feature_name] = 0.0
+
+            # Для следующей итерации добавляем прогнозируемое значение в историю
+            # (используем среднее исторических продаж как простой прогноз)
+            if sales_history:
+                predicted_sales = sum(sales_history[-7:]) / min(7, len(sales_history))
+            else:
+                predicted_sales = 0.0
+
+            sales_history.append(predicted_sales)  # Добавляем для расчета rolling на следующий день
 
             future_rows.append(row)
 

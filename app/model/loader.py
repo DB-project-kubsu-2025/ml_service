@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Dict, Any
 import logging
 from datetime import datetime
 from app.config import MODEL_ARTIFACTS_DIR
-from app.types import ModelMetadata
+from app.type import ModelMetadata
 
 logger = logging.getLogger(__name__)
 

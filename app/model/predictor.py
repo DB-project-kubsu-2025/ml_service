@@ -14,7 +14,7 @@ from app.preprocessing.prepare import DataPreprocessor
 from app.model.loader import ModelLoader
 from app.postprocessing.format import ResultFormatter
 from app.schemas import HistoricalDataPoint, DataForPredictionItem
-from app.types import (
+from app.type import (
     PredictionResponse, ErrorResponse, HealthCheckResponse,
     ModelInfoResponse, BatchPredictionAPIResponse, SuccessPredictionResponse, PredictionPoint,
 )
@@ -33,9 +33,24 @@ class SalesPredictor:
                 historical_data: List[HistoricalDataPoint],
                 forecast_days: int = 14) -> PredictionResponse:
         """Прогнозирование продаж"""
+
+        if historical_data and isinstance(historical_data[0], dict):
+            # Уже словари
+            hist_data = historical_data
+        else:
+            # Конвертируем Pydantic модели в словари
+            hist_data = [item.dict() for item in historical_data]
+
+        historical_df, future_df = self.preprocessor.prepare_for_prediction(
+            hist_data, forecast_days
+        )
+
         logger.info(f"Прогнозирование для {category_store_id}")
 
+        logger.info(f"Поиск модели для {category_store_id}")
         model, metadata = self.loader.load_model(category_store_id)
+        logger.info(f"Результат загрузки: model={model is not None}, metadata={metadata}")
+
         if model is None:
             error_response: ErrorResponse = {
                 'status': 'error',
@@ -54,14 +69,16 @@ class SalesPredictor:
                 self.preprocessor.feature_order = model_features
                 logger.info(f"Используем признаки из метаданных: {len(model_features)}")
 
-        historical_df, future_df = self.preprocessor.prepare_for_prediction(
-            historical_data, forecast_days
-        )
+
 
         X_historical, X_future = self.preprocessor.get_features_for_prediction(
             historical_df, future_df
         )
         logger.info(f"Используется {len(X_future.columns)} признаков для прогноза")
+        logger.info(f"Признаки для прогноза: {X_future.columns.tolist()}")
+        logger.info(f"Данные для прогноза (первые 3 дня):")
+        for i in range(min(3, len(X_future))):
+            logger.info(f"День {i + 1}: {X_future.iloc[i].to_dict()}")
 
         if hasattr(model, 'n_features_in_'):
             expected_features = model.n_features_in_
@@ -77,25 +94,56 @@ class SalesPredictor:
                 logger.info('Использована модель LightGBM с отключенной проверкой формы')
 
             elif isinstance(model, XGBRegressor):
+
                 if hasattr(model, 'feature_names_in_'):
-                    model_order = list(model.feature_names_in_)
-                    data_order = list(X_future.columns)
+
+                    # КОНВЕРТИРУЕМ numpy строки в обычные
+
+                    model_order = [str(feat) for feat in list(model.feature_names_in_)]  # <-- Исправление
+
+                    data_order = [str(col) for col in list(X_future.columns)]  # <-- На всякий случай тоже
 
                     if model_order != data_order:
-                        logger.warning('Порядок признаков не совпадает, пытаемся исправить...')
+
+                        logger.warning(
+                            f'Порядок признаков не совпадает. Модель: {len(model_order)}, Данные: {len(data_order)}')
+
+                        logger.warning(f'Первые 5 признаков модели: {model_order[:5]}')
+
+                        logger.warning(f'Первые 5 признаков данных: {data_order[:5]}')
+
                         try:
+
                             X_future = X_future[model_order]
+
                             logger.info('Порядок признаков успешно исправлен')
+
                         except KeyError as e:
+
                             logger.error(f'Не удалось привести порядок признаков: {e}')
+
+                            # Найдем отсутствующие признаки
+
                             missing = set(model_order) - set(data_order)
+
+                            extra = set(data_order) - set(model_order)
+
+                            logger.error(f'Отсутствуют: {missing}')
+
+                            logger.error(f'Лишние: {extra}')
+
+                            # Добавляем отсутствующие признаки
+
                             for feature in missing:
                                 X_future[feature] = 0.0
+
                             X_future = X_future[model_order]
+
                             logger.warning(f'Добавлены отсутствующие признаки: {missing}')
 
                 predictions = model.predict(X_future)
-                logger.info('Использована модель XGBoost')
+
+                logger.info(f'Использована модель XGBoost. Прогнозы: {predictions[:3]}...')  # Добавим логирование
 
             elif isinstance(model, RandomForestRegressor):
                 predictions = model.predict(X_future)
@@ -118,7 +166,7 @@ class SalesPredictor:
                 model_type = type(model).__name__
                 logger.info(f'Использована модель неизвестного типа: {model_type}')
 
-            predictions = np.maximum(predictions, 0)
+            predictions = np.abs(predictions)
             result = self._format_predictions(
                 category_store_id, predictions, forecast_days, model, metadata
             )
