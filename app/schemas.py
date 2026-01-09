@@ -3,19 +3,19 @@ from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
-from app.types import BatchPredictionSummary
+from app.type import BatchPredictionSummary
 
 
 class HistoricalDataPoint(BaseModel):
-    date: str = Field(examples=['2024-01-01'])
-    sales: float = Field(examples=[123.45])
+    date: str = Field(examples=['2026-01-08'])
+    sales: float = Field(examples=[2235.45])
 
 
 def historical_example(start: datetime.date, days: int = 28):
     return [
         {
             'date': (start + datetime.timedelta(days=i)).isoformat(),
-            'sales': round(100 + i * 2.5, 2),
+            'sales': round(2000 + i * 2.5, 2),
         }
         for i in range(days)
     ]
@@ -32,8 +32,8 @@ class PredictionRequest(BaseModel):
                 'category_store_id': 'FOODS/CA/1',
                 'forecast_days': 7,
                 'historical_data': historical_example(
-                    start=datetime.date(2024, 1, 1),
-                    days=28,
+                    start=datetime.date(2025, 11, 11),
+                    days=58,
                 ),
             },
         },
@@ -42,7 +42,7 @@ class PredictionRequest(BaseModel):
 
 class PredictionPoint(BaseModel):
     date: Optional[str] = None
-    value: Optional[float] = None
+    predicted_sales: Optional[float] = None
 
 
 class PredictionStatistics(BaseModel):
@@ -66,7 +66,152 @@ class DataForPrediction(BaseModel):
                     {
                         'category_store_id': 'FOODS/CA/1',
                         'forecast_days': 7,
-                        'historical_data': historical_example(datetime.date(2024, 1, 1)),
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/CA/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/CA/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/CA/4',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/TX/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/TX/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/TX/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/WI/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/WI/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'FOODS/WI/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/CA/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/CA/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/CA/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/CA/4',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/TX/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/TX/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/TX/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/WI/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/WI/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOBBIES/WI/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/CA/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/CA/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/CA/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/CA/4',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/TX/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/TX/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/TX/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/WI/1',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/WI/2',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
+                    },
+                    {
+                        'category_store_id': 'HOUSEHOLD/WI/3',
+                        'forecast_days': 7,
+                        'historical_data': historical_example(datetime.date(2025, 11, 11)),
                     },
                 ],
             },

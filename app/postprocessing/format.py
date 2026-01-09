@@ -3,7 +3,7 @@ import numpy as np
 from typing import Dict, List, Any
 import logging
 
-from app.types import (
+from app.type import (
     BatchPredictionResponse, ModelMetadata, BatchPredictionSummary,
     BatchPredictionResultItem
 )
@@ -27,7 +27,6 @@ class ResultFormatter:
 
         for cat_id, result in results.items():
             if result.get('status') == self.STATUS_OF_SUCCESS:
-                # Создание успешного результата с нужными полями
                 successful_item: BatchPredictionResultItem = {
                     'category_store_id': cat_id,
                     'forecast_days': result.get('forecast_days', 0),
@@ -35,7 +34,6 @@ class ResultFormatter:
                 }
                 successful.append(successful_item)
             else:
-                # Создание результата с ошибкой
                 failed_item: BatchPredictionResultItem = {
                     'category_store_id': cat_id,
                     'error': result.get('error', 'Unknown error')
